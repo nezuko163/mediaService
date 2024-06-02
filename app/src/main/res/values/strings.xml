@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">mediaService</string>
+    <string name="on_get_root">yabujin</string>
+    <string name="pause">pause</string>
+    <string name="play">play</string>
+    <string name="previous">previous</string>
+    <string name="next">next</string>
+    <string name="NOTIFICATION_CHANNEL_ID">angelwitta</string>
+</resources>
