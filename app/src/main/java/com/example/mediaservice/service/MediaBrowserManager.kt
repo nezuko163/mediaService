@@ -1,13 +1,14 @@
 package com.example.mediaservice.service
 
 import android.content.ComponentName
+import android.media.MediaPlayer.OnCompletionListener
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import android.widget.Toast
-import com.example.mediaservice.MainActivity
+import com.example.mediaservice.activity.MainActivity
 
 
 class MediaBrowserManager(val activity: MainActivity) {
@@ -86,7 +87,9 @@ class MediaBrowserManager(val activity: MainActivity) {
     }
 
     fun onStop() {
-        if (!::mediaControllerCompat.isInitialized) {
+        if (::mediaControllerCompat.isInitialized) {
+            Log.i(TAG, "onStop: manager on stop")
+            mediaController()?.stop()
             mediaControllerCompat.unregisterCallback(controllerCallback)
         }
     }

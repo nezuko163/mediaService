@@ -18,7 +18,7 @@ class Player(val context: Context) {
     var isSrcSetted = false
 
     lateinit var onCompletionListener: MediaPlayer.OnCompletionListener
-//    lateinit var onErrorListener: MediaPlayer.OnErrorListener
+    lateinit var onErrorListener: MediaPlayer.OnErrorListener
 
     private fun createMp(resId: Int) {
         createMp(Tool.resIdToUri(context, resId))
@@ -34,7 +34,7 @@ class Player(val context: Context) {
                     .build()
             )
             setOnCompletionListener(onCompletionListener)
-//            setOnErrorListener(onErrorListener)
+            setOnErrorListener(onErrorListener)
             setWakeMode(context, PowerManager.PARTIAL_WAKE_LOCK)
             setVolume(1.0f, 1.0f)
         }
@@ -90,18 +90,22 @@ class Player(val context: Context) {
     }
 
     fun other(uri: Uri) {
-        if (::mediaPlayer.isInitialized){
+        Log.i(TAG, "other: over started")
+        if (::mediaPlayer.isInitialized && isSrcSetted) {
             if (isPlaying()) {
+                Log.i(TAG, "other: 123")
                 stop()
             }
         }
-        if (isSrcSetted) {
-            Log.i(TAG, "other: srcSetted")
-            changeAudio(uri)
-        } else {
-            Log.i(TAG, "other: srcNotSetted")
-            createMp(uri)
-        }
+
+        createMp(uri)
+//        if (isSrcSetted) {
+//            Log.i(TAG, "other: srcSetted")
+//            changeAudio(uri)
+//        } else {
+//            Log.i(TAG, "other: srcNotSetted")
+//            createMp(uri)
+//        }
         resetAtrributes()
         isSrcSetted = true
     }

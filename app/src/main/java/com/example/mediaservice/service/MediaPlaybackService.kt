@@ -10,7 +10,6 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -18,19 +17,16 @@ import android.os.ResultReceiver
 import android.service.media.MediaBrowserService
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaDescriptionCompat
-import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.MediaSessionCompat.QueueItem
 import android.support.v4.media.session.PlaybackStateCompat
 import android.text.TextUtils
 import android.util.Log
 import android.view.KeyEvent
-import androidx.core.app.NotificationCompat
 import androidx.media.AudioManagerCompat
 import androidx.media.MediaBrowserServiceCompat
 import androidx.media.session.MediaButtonReceiver
-import androidx.media3.exoplayer.ExoPlayer
-import com.example.mediaservice.MainActivity
+import com.example.mediaservice.activity.MainActivity
 import com.example.mediaservice.R
 import com.example.mediaservice.player.Player
 import com.example.mediaservice.utils.Pashalko
@@ -41,7 +37,7 @@ import com.example.mediaservice.utils.Tool
 class MediaPlaybackService : MediaBrowserServiceCompat() {
 
     val TAG = "SERVICE_MEDIA_AUDIO"
-    val CHANNEL_ID = "1488"
+//    val CHANNEL_ID = "1488"
 
     private lateinit var mediaSession: MediaSessionCompat
     private lateinit var audioFocusRequest: AudioFocusRequest
@@ -64,18 +60,26 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
         }
 
     }
+    private val playerPositionRunnable = PlayerPosition()
 
-    val onCompletionListener = MediaPlayer.OnCompletionListener {
+    private val onCompletionListener = MediaPlayer.OnCompletionListener {
         val repeatMode = mediaSession.controller.repeatMode
+        Log.i(TAG, "oncompl Listener: $repeatMode")
         when (repeatMode) {
-            PlaybackStateCompat.REPEAT_MODE_ONE -> {}
+            PlaybackStateCompat.REPEAT_MODE_ONE -> callback.onPlay()
             PlaybackStateCompat.REPEAT_MODE_ALL -> callback.onSkipToNext()
             else -> callback.onStop()
         }
-
-        callback.onPrepare()
-        callback.onPlay()
     }
+
+
+    private val onErrorListener =
+        MediaPlayer.OnErrorListener { mp: MediaPlayer?, what: Int, extra: Int ->
+            handler.removeCallbacks(playerPositionRunnable)
+
+            false
+        }
+
 
     private val afChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
         when (focusChange) {
@@ -92,22 +96,15 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
         }
     }
 
-    val callback = object : MediaSessionCompat.Callback() {
+    private val callback = object : MediaSessionCompat.Callback() {
 
         override fun onMediaButtonEvent(mediaButtonEvent: Intent?): Boolean {
             val keyEvent: KeyEvent? =
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                    // Pre-SDK 33
-                    @Suppress("DEPRECATION")
-                    mediaButtonEvent?.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
-                } else {
-                    // SDK 33 and up
-                    mediaButtonEvent?.getParcelableExtra(
-                        Intent.EXTRA_KEY_EVENT,
-                        KeyEvent::class.java
-                    )
-                }
-            Log.i(TAG, "onMediaButtonEvent: $keyEvent")
+                // SDK 33 and up
+                mediaButtonEvent?.getParcelableExtra(
+                    Intent.EXTRA_KEY_EVENT,
+                    KeyEvent::class.java
+                )
             keyEvent?.let { event ->
                 when (event.keyCode) {
                     KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
@@ -126,10 +123,16 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
             return super.onMediaButtonEvent(mediaButtonEvent)
         }
 
+        override fun onSetRepeatMode(repeatMode: Int) {
+            super.onSetRepeatMode(repeatMode)
+
+            mediaSession.setRepeatMode(repeatMode)
+        }
+
         override fun onPlay() {
             super.onPlay()
 
-            Log.i(TAG, "onPlay: ")
+            Log.i(TAG, "onPlay: called onplay")
             val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
             audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).run {
@@ -152,7 +155,6 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
                 )
 //                val thread = Thread(playerPosition)
 //                Thread(Player) start ()
-                setMediaMetadata()
                 refreshNotification()
 
             }
@@ -160,10 +162,12 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
 
         override fun onStop() {
             super.onStop()
-
+            Log.i(TAG, "onStop: called onstop")
             val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
             am.abandonAudioFocusRequest(audioFocusRequest)
-            unregisterReceiver(noisyReceiver)
+            try {
+                unregisterReceiver(noisyReceiver)
+            } catch (_: Exception) {}
             stopSelf()
             mediaSession.isActive = false
             player.stop()
@@ -176,19 +180,19 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
 
         override fun onCommand(command: String?, extras: Bundle?, cb: ResultReceiver?) {
             super.onCommand(command, extras, cb)
-            Log.i(TAG, "onCommand: 123")
         }
 
         override fun onPause() {
             super.onPause()
 
-            Log.i(TAG, "onPause: ")
+            Log.i(TAG, "onPause: called onpause")
 
             player.pause()
-            unregisterReceiver(noisyReceiver)
+//            mediaSession.isActive = true
+//            unregisterReceiver(noisyReceiver)
             refreshNotification()
             setMediaPlaybackState(PlaybackStateCompat.STATE_PAUSED)
-            stopForeground(NOTIFIC_CHANNEL_ID)
+//            stopForeground(NOTIFIC_CHANNEL_ID)
         }
 
         override fun onSeekTo(pos: Long) {
@@ -211,7 +215,7 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
         override fun onSkipToPrevious() {
             super.onSkipToPrevious()
             Log.i(TAG, "onSkipToPrevious: $currentQueueItemId")
-            onSkipToQueueItem((currentQueueItemId - 1).toLong())
+            onSkipToQueueItem((--currentQueueItemId).toLong())
         }
 
         override fun onSkipToNext() {
@@ -223,21 +227,17 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
                 } else return
             }
 
-            onSkipToQueueItem((currentQueueItemId + 1).toLong())
+            onSkipToQueueItem((++currentQueueItemId).toLong())
+
         }
 
         override fun onPrepare() {
             super.onPrepare()
-
-            Log.i(TAG, "onPrepare: 321")
-
             val track = list[currentQueueItemId]
             val state = mediaSession.controller.playbackState.state
 
-            Log.i(TAG, "onPrepare: ${track.description.mediaId.toString()}")
-
             val uri = track.description.mediaUri ?: return
-            Log.i(TAG, "onPrepare: prepare")
+
             player.other(uri)
 
             setMediaMetadata()
@@ -280,11 +280,14 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
     }
 
     private fun setMediaMetadata() {
+        val ae = Tool.metadataBuilder(list[currentQueueItemId])
+        val item = list[currentQueueItemId]
+        Log.i(TAG, "item_icon_uri: ${item.description.iconUri}")
+        Log.i(TAG, "item_media_uri: ${item.description.mediaUri}")
+        Log.i(TAG, "icon: ${ae!!.build().description.iconUri}")
+        Log.i(TAG, "media: ${ae!!.build().description.mediaUri}")
         mediaSession.setMetadata(
-            Tool.metadataBuilder(
-                list[currentQueueItemId],
-                applicationContext
-            )?.build()
+            ae?.build()
         )
     }
 
@@ -297,11 +300,9 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
         )
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        Log.i(TAG, "refreshNotification: ${nm.areNotificationsEnabled()}")
-
 
         startForeground(14881, builder.build())
-        nm.notify(14881, builder.build())
+//        nm.notify(14881, builder.build())
     }
 
     //
@@ -395,18 +396,18 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
 //    }
 
     // нужно сделать чтобы поток и в нём обновлялось проигрываемое значение
-//    inner class PlayerPosition() : Runnable {
-//        override fun run() {
-//            while (mediaSession.controller.playbackState.state != PlaybackStateCompat.STATE_NONE ||
-//                mediaSession.controller.playbackState.state != PlaybackStateCompat.STATE_STOPPED ||
-//                mediaSession.controller.playbackState.state != PlaybackStateCompat.STATE_ERROR
-//            ) {
-//                val state = mediaSession.controller.playbackState.state
-//                setMediaPlaybackState(state)
-//                handler.postDelayed(this, 900L)
-//            }
-//        }
-//    }
+    inner class PlayerPosition() : Runnable {
+        override fun run() {
+            try {
+                val state = mediaSession.controller.playbackState.state
+                setMediaPlaybackState(state)
+            } catch (e: Exception) {
+                e
+            } finally {
+                handler.postDelayed(this, 900)
+            }
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -415,17 +416,17 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
     }
 
     private fun init() {
-        Log.i(TAG, "init: 321")
         initMediaSession()
         initPlayer()
+//        playerPositionRunnable.run()
 //        initReceiver()
+        Thread(playerPositionRunnable).start()
     }
 
     private fun initMediaSession() {
         mediaSession = MediaSessionCompat(applicationContext, "MediaPlaybackService").apply {
             setFlags(
-                MediaSessionCompat.FLAG_HANDLES_QUEUE_COMMANDS or
-                        MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS
+                MediaSessionCompat.FLAG_HANDLES_QUEUE_COMMANDS
             )
             setCallback(callback)
             setSessionToken(this.sessionToken)
@@ -456,8 +457,8 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
 
     private fun initPlayer() {
         player = Player(applicationContext)
-        Log.i(TAG, "initPlayer: 123")
         player.onCompletionListener = onCompletionListener
+        player.onErrorListener = onErrorListener
     }
 
 //    private fun initReceiver() {
@@ -470,7 +471,7 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.i(TAG, "onStartCommand: asddas")
+        Log.i(TAG, "onStartCommand: on start com")
         intent?.action?.let {
             when (it) {
                 "play" -> callback.onPlay()
@@ -487,6 +488,7 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
 
     override fun onDestroy() {
         super.onDestroy()
+        handler.removeCallbacks(playerPositionRunnable)
         mediaSession.release()
         player.stop()
 //        handler.removeCallbacks(playerPosition)
@@ -498,10 +500,8 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
         rootHints: Bundle?
     ): BrowserRoot {
         if (TextUtils.equals(packageName, clientPackageName)) {
-            Log.i(TAG, "onGetRoot: aee")
             return BrowserRoot(getString(R.string.app_name), null)
         } else {
-            Log.i(TAG, "onGetRoot: oh nooo")
             return BrowserRoot(getString(R.string.on_get_root), null)
         }
     }

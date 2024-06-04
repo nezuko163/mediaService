@@ -1,23 +1,19 @@
 package com.example.mediaservice.utils
 
-import android.app.Notification
-import android.app.Notification.MediaStyle
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
-import android.graphics.ImageDecoder
-import android.media.session.MediaSession
-import android.provider.MediaStore
+import android.content.Intent
 import android.support.v4.media.session.MediaSessionCompat
-import android.support.v4.media.session.MediaSessionCompat.Token
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
-import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.ContextCompat.getSystemService
 import androidx.media.session.MediaButtonReceiver
 import com.example.mediaservice.R
+import com.example.mediaservice.activity.MainActivity
+
 
 class NotificationHelper {
     companion object {
@@ -47,7 +43,19 @@ class NotificationHelper {
 //                setSubText(description.description)
 
                 // Enable launching the player by clicking the notification
-                setContentIntent(controller.sessionActivity)
+
+                val intent = context.packageManager
+                    .getLaunchIntentForPackage(context.packageName)
+                    ?.setPackage(null)
+                    ?.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                val contentIntent = PendingIntent.getActivity(
+                    context,
+                    0,
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+                )
+
+                setContentIntent(contentIntent)
 
                 // Stop the service when the notification is swiped away
                 setDeleteIntent(
@@ -125,7 +133,8 @@ class NotificationHelper {
 
         fun createChannelForMediaPlayerNotification(context: Context) {
             val channel = NotificationChannel(
-                context.getString(R.string.NOTIFICATION_CHANNEL_ID), context.getString(R.string.NOTIFICATION_CHANNEL_ID),
+                context.getString(R.string.NOTIFICATION_CHANNEL_ID),
+                context.getString(R.string.NOTIFICATION_CHANNEL_ID),
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = "All app notifications"

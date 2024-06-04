@@ -63,4 +63,22 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer.dash)
     implementation(libs.androidx.media3.ui)
 
+    // Fragment
+    implementation(libs.androidx.fragment)
+    implementation(libs.androidx.fragment.ktx)
+
+
+    // Navigation
+    val nav_version = "2.7.7"
+    implementation(libs.androidx.navigation.fragment.ktx)
+    implementation(libs.androidx.navigation.ui.ktx)
+
+    implementation(libs.material.v190)
+
+    // glide
+    implementation(libs.glide)
+
+    // viewPager
+    implementation(libs.androidx.viewpager2)
+
 }

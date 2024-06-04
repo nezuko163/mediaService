@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:id="@+id/menu_track">
+        <item android:id="@+id/add_to_playlist"
+            android:title="@string/add_to_playlist" />
+        <item android:id="@+id/change_credits"
+            android:title="@string/change_credits" />
+        <item android:id="@+id/add_to_queue"
+            android:title="@string/add_to_queue" />
+
+    </group>
+</menu>

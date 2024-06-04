@@ -1,6 +1,7 @@
 package com.example.mediaservice
 
 import android.net.Uri
+import java.lang.reflect.Constructor
 
 data class Audio(
     val path: String,
@@ -11,4 +12,15 @@ data class Audio(
     val date: Long? = null,
     val art_uri: Uri? = null,
     val audio_uri: Uri? = null,
-)
+) {
+    constructor(): this(
+        "",
+        "",
+        "",
+        "",
+        0L,
+        null,
+        null,
+        null,
+    )
+}

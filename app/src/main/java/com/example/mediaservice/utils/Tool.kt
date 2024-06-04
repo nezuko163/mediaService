@@ -14,6 +14,7 @@ import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat.QueueItem
+import android.util.Log
 import com.example.mediaservice.Audio
 import java.io.File
 import java.io.FileOutputStream
@@ -46,7 +47,10 @@ class Tool {
             return uri
         }
 
-        fun metadataBuilder(audio: Audio?, context: Context): MediaMetadataCompat.Builder? {
+        fun metadataBuilder(
+            audio: Audio?,
+            id: Long = 0L
+        ): MediaMetadataCompat.Builder? {
             if (audio == null) return null
 
             val builder = MediaMetadataCompat.Builder()
@@ -55,20 +59,25 @@ class Tool {
                 .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, audio.album)
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, audio.artist)
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, audio.duration)
-
+                .putLong("queue_id", id)
             return builder
         }
 
-        fun metadataBuilder(queueItem: QueueItem?, context: Context): MediaMetadataCompat.Builder? {
+        fun metadataBuilder(queueItem: QueueItem?): MediaMetadataCompat.Builder? {
             if (queueItem == null) return null
 
             val duration = queueItem.description.extras?.getLong("duration") ?: return null
+            val id = queueItem.description.extras?.getLong("queue_id") ?: return null
+
+            Log.i("MAIN_ACTIVITY", "metadataBuilder: $duration")
 
             val builder = MediaMetadataCompat.Builder()
                 .putString(
                     MediaMetadataCompat.METADATA_KEY_ART_URI,
-                    queueItem.description.mediaUri.toString()
+                    queueItem.description.iconUri.toString()
                 )
+                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI,
+                    queueItem.description.mediaUri.toString())
                 .putString(
                     MediaMetadataCompat.METADATA_KEY_TITLE,
                     queueItem.description.title.toString()
@@ -81,6 +90,7 @@ class Tool {
                     MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION,
                     queueItem.description.description.toString()
                 )
+                .putLong(MediaMetadataCompat.METADATA_KEY_NUM_TRACKS, id)
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
             return builder
         }
@@ -105,7 +115,8 @@ class Tool {
                     putLong("queue_id", id)
                 }
             }
-
+            Log.i("ART_URI", "audioToMediaDescriptionCompat: ${audio.art_uri}")
+            Log.i("MEDIA_URI", "audioToMediaDescriptionCompat: ${audio.audio_uri}")
             return MediaDescriptionCompat.Builder()
                 .setExtras(bundle)
                 .setTitle(audio.name)

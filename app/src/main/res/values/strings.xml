@@ -6,4 +6,10 @@
     <string name="previous">previous</string>
     <string name="next">next</string>
     <string name="NOTIFICATION_CHANNEL_ID">angelwitta</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="iz_mediateki">из медиатеки</string>
+    <string name="add_to_playlist">добавить в плейлист</string>
+    <string name="change_credits">изменить сведения</string>
+    <string name="add_to_queue">добавить в очередь</string>
 </resources>
